@@ -48,10 +48,6 @@ import random
 
 import pandas as pd
 
-many_verbs = list(pd.read_csv('EPIC_many_shot_verbs.csv')['verb_class'].values)
-
-many_nouns = list(pd.read_csv('EPIC_many_shot_nouns.csv')['noun_class'].values)
-
 class TSN_EPICval(Dataset):
     def __init__(self, ann_file, obs_seg, seg_length, lmdb_path, transform=None):
         self.tsn_feat_list = []
@@ -710,7 +706,7 @@ criterion = nn.CrossEntropyLoss()
 
 batch_size = 256
 
-lmdb_path = '/home/roy/epic_rgb_full_features'
+lmdb_path = 'data/ek55/rgb'
 
 train_ann_file = 'training.csv'
 test_ann_file = 'validation.csv'
