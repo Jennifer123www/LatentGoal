@@ -1,16 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
+# author: Debaditya Roy
 
-# In[1]:
-
-
-#
-#
-# ===================== 
-# Training a Classifier
-# =====================
-# 
-#
 
 import time, os, copy, numpy as np
 
@@ -62,7 +53,7 @@ import pandas as pd
 import json
 
 class EPICval(Dataset):
-    def __init__(self, ann_file, obs_seg, seg_length, obj_lmdb_path, tsn_lmdb_path, classifier, transform=None):
+    def __init__(self, ann_file, obs_seg, seg_length, obj_lmdb_path, tsn_lmdb_path, transform=None):
         self.obj_feat_list = []
         self.tsn_feat_list = []
         self.uid_list = []
@@ -108,10 +99,8 @@ class EPICval(Dataset):
                             obj_feat = np.frombuffer(ff_obj, 'float32')
                             obj_feat_in_seg.append(obj_feat.copy())
 
-                            tsn_feat = torch.tensor(np.frombuffer(ff_tsn, 'float32').copy())
-                            # print(tsn_feat.shape)
-                            tsn_feat = classifier(tsn_feat).detach().cpu().numpy() # obtain softmax scores
-                            tsn_feat_in_seg.append(tsn_feat)
+                            tsn_feat = torch.tensor(np.frombuffer(ff_tsn, 'float32'))
+                            tsn_feat_in_seg.append(tsn_feat.copy())
                     # else:
                         # continue
                     #print(len(tsn_feat_in_seg))    
@@ -379,8 +368,8 @@ def largest_indices(array: np.ndarray, n: int) -> tuple:
     indices = indices[np.argsort(-flat[indices])]
     return np.unravel_index(indices, array.shape)
 
-def evaluate(test_ann_file, json_file, obj_lmdb_path, tsn_lmdb_path, verb_anticipation_model, noun_anticipation_model, classifier):
-    test_set = EPICval(test_ann_file, obs_seg, int(seg_length_sec*frame_rate), obj_lmdb_path, tsn_lmdb_path, classifier)
+def evaluate(test_ann_file, json_file, obj_lmdb_path, tsn_lmdb_path, verb_anticipation_model, noun_anticipation_model):
+    test_set = EPICval(test_ann_file, obs_seg, int(seg_length_sec*frame_rate), obj_lmdb_path, tsn_lmdb_path)
     print('{} test_seen instances.'.format(len(test_set)))
     testloader = DataLoader(test_set, batch_size=1, shuffle=False, num_workers=0)
     predictions = {}
@@ -459,18 +448,8 @@ criterion = nn.CrossEntropyLoss()
 tsn_lmdb_path = '/home/roy/epic_rgb_full_features'
 obj_lmdb_path = '/home/roy/epic_bagofobj_full_features'
 
-model = bninception(pretrained=None)
-state_dict = torch.load('../rulstm/FEATEXT/models/TSN-rgb.pth.tar')['state_dict']
-state_dict = {k.replace('module.base_model.','') : v for k,v in state_dict.items()}
-state_dict = {k.replace('module.','') : v for k,v in state_dict.items()}
-del model.last_linear
-model.new_fc= nn.Linear(1024, 2513)
-model.load_state_dict(state_dict)
-
-classifier = model.new_fc
-
 # predict with tsnrgb
-verb_feature_dim = 2513
+verb_feature_dim = 1024
 verb_hidden_size = 1024
 verb_anticipation_model = Anticipator(verb_feature_dim, goal_smoothness, goal_closeness, verb_hidden_size)
 verb_ckpt_path = 'ckpt/bagoftsnrgb_action_latent_goal_{:1.1f}sx{:d}_obs_max.pt'.format(seg_length_sec, obs_seg)
@@ -489,7 +468,7 @@ noun_anticipation_model.to(device)
 
 test_ann_file = 'test_seen.csv'
 json_file = 'seen.json'
-evaluate(test_ann_file, json_file, obj_lmdb_path, tsn_lmdb_path, verb_anticipation_model, noun_anticipation_model, classifier)
+evaluate(test_ann_file, json_file, obj_lmdb_path, tsn_lmdb_path, verb_anticipation_model, noun_anticipation_model)
 test_ann_file = 'test_unseen.csv'
 json_file = 'unseen.json'
-evaluate(test_ann_file, json_file, obj_lmdb_path, tsn_lmdb_path, verb_anticipation_model, noun_anticipation_model, classifier)
+evaluate(test_ann_file, json_file, obj_lmdb_path, tsn_lmdb_path, verb_anticipation_model, noun_anticipation_model)
